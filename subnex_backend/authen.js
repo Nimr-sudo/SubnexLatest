@@ -61,13 +61,10 @@ const ShoppersignIn = async (email, password) => {
   }
 };
 
-// authen.js
-
-// ... existing code ...
 
 const VendorsignUp = async (req, res, email, password) => {
   try {
-    const { fullName, preferences, businessName, agreeTerms } = req.body;
+    const { fullName, preferences, businessName, agreeTerms , phoneNumber } = req.body;
 
     // Step 1: Create user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -97,6 +94,7 @@ const VendorsignUp = async (req, res, email, password) => {
       preferences,
       taxId: taxIdDownloadURL,
       businessName,
+      phoneNumber,
       agreeTerms,
     });
 
@@ -107,6 +105,7 @@ const VendorsignUp = async (req, res, email, password) => {
       password,
       fullName,
       preferences,
+      phoneNumber,
       businessName,
       agreeTerms,
       taxId: taxIdDownloadURL,
@@ -134,7 +133,7 @@ const VendorsignIn = async (email, password) => {
 
 const PostJob = async (req, res) => {
   try {
-    const { email, category, make, description, shopName, shopAddress, model, year, biddingDeadline, latitude, longitude } = req.body;
+    const { email, category, make, description, shopName, shopAddress, model, year, biddingDeadline, latitude, longitude ,shopId} = req.body;
 
     const jobPictureFile = req.file;
 
@@ -165,6 +164,7 @@ const PostJob = async (req, res) => {
       shopAddress,
       model,
       year,
+      shopId,
       biddingDeadline,
       latitude,
       longitude,
@@ -194,6 +194,49 @@ const PostJob = async (req, res) => {
   } catch (error) {
     console.error('Error in PostJob:', error);
     res.status(500).json({ error: `Internal Server Error: ${error.message || 'Unknown error'}` });
+  }
+};
+const GetBidsFromVendor = async (vendorId) => {
+  try {
+    const db = getFirestore(); // Assuming Firebase is initialized elsewhere
+
+    // Query to retrieve all documents from the VendorSubmittedBids collection
+    const querySnapshot = await getDocs(
+      query(collection(db, 'VendorSubmittedBids'), where('vendorId', '==', vendorId))
+    );
+
+    // Process the snapshot and collect all bids
+    const bids = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return { success: true, bids };
+  } catch (error) {
+    console.error('Error getting bids from vendor:', error);
+    return { success: false, error: 'Internal Server Error' };
+  }
+};
+
+const GetBidsFromShop = async (shopId) => {
+  try {
+    const db = getFirestore(); // Assuming Firebase is initialized elsewhere
+
+    // Query to retrieve all documents from the ShopPending collection
+    const querySnapshot = await getDocs(
+      query(collection(db, 'VendorSubmittedBids'), where('shopId', '==', shopId))
+    );
+
+    // Process the snapshot and collect all bids
+    const bids = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return { success: true, bids };
+  } catch (error) {
+    console.error('Error getting bids from shop:', error);
+    return { success: false, error: 'Internal Server Error' };
   }
 };
 
@@ -238,7 +281,7 @@ const getUserInfo = async (role, email) => {
   }
 };
 // Function to handle bid submission
-const SubmitBid = async (jobId, shopName, category, description, userId, payment, deadline) => { // Add payment and deadline as parameters
+const SubmitBid = async (jobId, shopName, category, description, vendorId, payment, deadline ,shopId) => { // Add payment and deadline as parameters
   try {
     const db = getFirestore(); // Assuming Firebase is initialized elsewhere
 
@@ -247,11 +290,12 @@ const SubmitBid = async (jobId, shopName, category, description, userId, payment
       jobId,
       shopName,
       category,
+      shopId,
       description,
       payment, // Include payment in the bid data
       deadline, // Include deadline in the bid data
       date: serverTimestamp(), // Set the date to the current server timestamp
-      userId
+      vendorId:vendorId,
     });
 
     console.log('Bid submitted successfully. Document ID:', bidDocRef.id);
@@ -520,4 +564,4 @@ const deleteBid = async (bidId) => {
 
 module.exports = { auth, ShoppersignUp, ShoppersignIn, VendorsignIn, VendorsignUp,PostJob,getUserInfo,SubmitBid,
 DeleteJobById,GetAllSubmittedBids,SaveVendorPreferences ,AddToVendorPending,DeleteFromShopPending, AddToShopPending,DeleteFromVendorPending,
-AddToShopCompleted,AddToVendorCompleted,getVendorJobsFromCollection,getShopJobsFromCollection,deleteBid, getVendorPreferences , deleteVendorPreference};
+AddToShopCompleted,AddToVendorCompleted,getVendorJobsFromCollection,getShopJobsFromCollection,deleteBid, getVendorPreferences , deleteVendorPreference, GetBidsFromVendor,GetBidsFromShop};

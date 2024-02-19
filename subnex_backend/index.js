@@ -4,7 +4,7 @@ const { onSnapshot, getDocs, query, collection, where, updateDoc,deleteDoc } = r
 const { getFirestore } = require('firebase/firestore');
 const app = express();
 const Job = require("./config");
-const { auth, ShoppersignUp, ShoppersignIn, VendorsignIn, VendorsignUp,getUserInfo, SubmitBid, GetAllSubmittedBids,DeleteJobById, SaveVendorPreferences, AddToShopPending,AddToVendorPending,DeleteFromShopPending,DeleteFromVendorPending,AddToShopCompleted,AddToVendorCompleted,getShopJobsFromCollection,getVendorJobsFromCollection, deleteBid,deleteVendorPreference,getVendorPreferences} = require("./authen");
+const { auth, ShoppersignUp, ShoppersignIn, VendorsignIn, VendorsignUp,getUserInfo, SubmitBid, GetAllSubmittedBids,DeleteJobById, SaveVendorPreferences, AddToShopPending,AddToVendorPending,DeleteFromShopPending,DeleteFromVendorPending,AddToShopCompleted,AddToVendorCompleted,getShopJobsFromCollection,getVendorJobsFromCollection, deleteBid,deleteVendorPreference,getVendorPreferences , GetBidsFromVendor, GetBidsFromShop} = require("./authen");
 const {PostJob} = require("./authen");
 const functions = require('firebase-functions');
 const multer = require('multer');
@@ -207,6 +207,47 @@ const Storage = multer.diskStorage({
   },
 });
 
+// Endpoint to get bids from vendor using vendorId
+app.get('/bids/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    // Retrieve bids from vendor
+    const result = await GetBidsFromVendor(vendorId);
+
+    // Send response based on the result
+    if (result.success) {
+      res.status(200).json({ bids: result.bids });
+    } else {
+      res.status(500).json({ error: result.error });
+    }
+  } catch (error) {
+    console.error('Error getting bids from vendor:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Endpoint to get bids from shop using shopId
+app.get('/bids/shop/:shopId', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    // Retrieve bids from shop
+    const result = await GetBidsFromShop(shopId);
+
+    // Send response based on the result
+    if (result.success) {
+      res.status(200).json({ bids: result.bids });
+    } else {
+      res.status(500).json({ error: result.error });
+    }
+  } catch (error) {
+    console.error('Error getting bids from shop:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 // Endpoint to get user info by email and role
 app.get('/user-info', async (req, res) => {
   try {
@@ -245,15 +286,15 @@ app.post("/vendor-signin", async (req, res) => {
 
 app.post('/vendor/submit-bid', async (req, res) => {
   try {
-    const { jobId, shopName, category, description, userId, payment, deadline } = req.body;
+    const { jobId, shopName, category, description, vendorId, payment, deadline ,shopId } = req.body;
 
     // Validate if jobId, userId, and other required fields exist
-    if (!jobId || !userId) {
+    if (!jobId || !vendorId) {
       return res.status(400).json({ error: 'Required fields are missing.' });
     }
 
     // Process the bid submission
-    const result = await SubmitBid(jobId, shopName, category, description, userId, payment, deadline);
+    const result = await SubmitBid(jobId, shopName, category, description, vendorId, payment, deadline ,shopId);
 
     // Send response based on the result
     if (result.success) {
@@ -501,7 +542,7 @@ app.get('/vendor-pending/:userId', async (req, res) => {
 
 app.get('/shop-pending/:shopId', async (req, res) => {
   try {
-    const shopId = req.query.shopId; // Get shopId from query parameter
+    const shopId = req.params.shopId; // Access shopId from URL parameter
     const result = await getShopJobsFromCollection('ShopPending', shopId);
 
     if (result.success) {
@@ -514,6 +555,7 @@ app.get('/shop-pending/:shopId', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 // Endpoint to get shop-completed jobs
 app.get('/shop-completed', async (req, res) => {
@@ -572,4 +614,4 @@ app.delete('/vendor-submitted-bids/:bidId', async (req, res) => {
 app.listen(3000, () => console.log("Up and Running on port 3000"));
 
 // exports.api = functions.https.onRequest(app);
-export default app
+module.exports = app;
